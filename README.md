@@ -1,152 +1,110 @@
 # 🎨 AI Color Consultation Tool
 
-An AI-powered color consultation tool that helps users choose Sherwin Williams paint colors for their rooms. Users upload a photo of their room, select the areas they want to paint, answer style preference questions, and receive personalized color recommendations with realistic previews.
+An AI-powered paint color consultation tool that provides **realistic wall previews** using advanced AI inpainting technology.
 
 ## Features
 
-- **Photo Upload**: Drag & drop or click to upload room photos
-- **Wall Selection**: Interactive mask editor to select areas to paint
-  - Manual brush/eraser tools
-  - Auto-detect walls feature
-- **AI-Powered Recommendations**: Uses Claude AI to suggest 3 Sherwin Williams paint colors based on:
-  - Room type and lighting conditions
-  - Style preferences (Modern, Traditional, Minimalist, etc.)
-  - Existing furniture and decor colors
-  - Mood preferences
-- **Live Color Preview**: See how each recommended color looks on your walls with realistic lighting preservation
+- **📸 Photo Upload** - Upload any room photo
+- **✨ AI Wall Detection** - Automatically detects walls and surfaces using Segment Anything Model (SAM)
+- **🎯 Click to Select** - Simply click on walls to select/deselect what you want painted
+- **💬 Smart Questionnaire** - 10 questions about your style, lighting, and preferences
+- **🎨 Expert Recommendations** - Get 3 personalized Sherwin Williams color recommendations from Claude AI
+- **🖼️ Realistic AI Previews** - See how colors actually look with AI-powered inpainting (not just overlays!)
+
+## How It Works
+
+1. Upload your room photo
+2. AI automatically detects all walls and surfaces
+3. Click to select which areas you want to paint
+4. Answer quick questions about your style
+5. Get 3 color recommendations
+6. Click any color to see a **realistic AI-generated preview** of your room with that paint color
 
 ## Tech Stack
 
-- **Frontend**: Vanilla HTML/CSS/JavaScript (single file, no build required)
-- **Backend**: Vercel Serverless Functions
-- **AI**: Anthropic Claude API
-- **Deployment**: Vercel
+- **Frontend**: Vanilla HTML/CSS/JavaScript
+- **AI Color Recommendations**: Anthropic Claude API
+- **Wall Detection**: Replicate SAM (Segment Anything Model)
+- **Realistic Previews**: Replicate SDXL Inpainting
+- **Hosting**: Vercel
 
-## Setup Instructions
+## Setup
 
-### 1. Clone or Download
+### 1. Get API Keys
 
-```bash
-git clone <your-repo-url>
-cd color-consultant-app
-```
+You need two API keys:
 
-### 2. Get Your Anthropic API Key
+**Anthropic API Key** (for color recommendations)
+- Go to [console.anthropic.com](https://console.anthropic.com)
+- Create an API key
 
-1. Go to [Anthropic Console](https://console.anthropic.com/)
-2. Sign up or log in
-3. Navigate to API Keys
-4. Create a new API key
-5. Copy the key (you'll need it in the next step)
+**Replicate API Key** (for wall detection + AI previews)
+- Go to [replicate.com](https://replicate.com)
+- Create an API token
 
-### 3. Deploy to Vercel
-
-#### Option A: Deploy via Vercel CLI
-
-```bash
-# Install Vercel CLI if you haven't
-npm install -g vercel
-
-# Deploy
-vercel
-
-# Follow the prompts, then add your environment variable
-vercel env add ANTHROPIC_API_KEY
-# Paste your API key when prompted
-# Select all environments (Production, Preview, Development)
-
-# Redeploy to apply the environment variable
-vercel --prod
-```
-
-#### Option B: Deploy via Vercel Dashboard
-
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Click "Add New Project"
-3. Import your repository (or drag & drop the project folder)
-4. Before deploying, go to "Environment Variables"
-5. Add a new variable:
-   - Name: `ANTHROPIC_API_KEY`
-   - Value: Your Anthropic API key
-   - Select all environments
-6. Click "Deploy"
-
-### 4. Test Your Deployment
-
-1. Visit your deployed URL (e.g., `https://your-project.vercel.app`)
-2. Upload a room photo
-3. Select the walls you want to paint
-4. Answer the questionnaire
-5. View your personalized color recommendations!
-
-## Local Development
+### 2. Deploy to Vercel
 
 ```bash
 # Install Vercel CLI
 npm install -g vercel
 
-# Create a .env file with your API key
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Deploy
+vercel
+
+# Add environment variables
+vercel env add ANTHROPIC_API_KEY
+vercel env add REPLICATE_API_KEY
+
+# Deploy to production
+vercel --prod
+```
+
+Or deploy via Vercel Dashboard:
+1. Import your repo at vercel.com
+2. Add Environment Variables:
+   - `ANTHROPIC_API_KEY` = your Anthropic key
+   - `REPLICATE_API_KEY` = your Replicate key
+3. Deploy
+
+## Cost Estimates
+
+Per consultation:
+- **Anthropic Claude**: ~$0.003
+- **SAM Segmentation**: ~$0.01
+- **SDXL Inpainting** (per color preview): ~$0.02-0.04
+
+**Total per full consultation with 3 previews**: ~$0.08-0.15
+
+## Local Development
+
+```bash
+# Create .env file
+echo "ANTHROPIC_API_KEY=your_key_here" > .env
+echo "REPLICATE_API_KEY=your_key_here" >> .env
 
 # Run locally
 vercel dev
 ```
 
-Visit `http://localhost:3000` in your browser.
-
 ## Project Structure
 
 ```
-color-consultant-app/
-├── index.html          # Main application (all frontend code)
+├── index.html              # Main app (all frontend code)
 ├── api/
-│   └── generate-colors.js   # Serverless function for AI recommendations
+│   ├── generate-colors.js  # Claude AI color recommendations
+│   ├── segment-image.js    # SAM wall detection
+│   └── inpaint-walls.js    # SDXL realistic preview generation
 ├── package.json
-├── vercel.json         # Vercel configuration
-├── .env.example        # Example environment variables
-├── .gitignore
+├── vercel.json
 └── README.md
 ```
 
-## How It Works
+## Why This Approach?
 
-1. **Photo Upload**: User uploads a room photo which is resized and converted to base64
-2. **Mask Selection**: User paints over the areas they want to change color using canvas tools
-3. **Questionnaire**: User answers 10 questions about their style preferences
-4. **AI Analysis**: The answers are sent to Claude AI which recommends 3 Sherwin Williams colors
-5. **Preview Generation**: Client-side canvas processing applies each color to the masked areas while preserving shadows and lighting
-6. **Results**: User can click between colors to see live previews
+Unlike simple color overlays that just tint pixels, this tool uses **AI inpainting** which:
+- Understands the context of the room
+- Preserves realistic lighting and shadows
+- Renders paint texture appropriately
+- Keeps furniture and decor looking natural
 
-## Troubleshooting
-
-### "ANTHROPIC_API_KEY not found"
-- Make sure you added the environment variable in Vercel
-- Ensure you selected "Production" when adding the key
-- Try redeploying after adding the key
-
-### "Failed to parse color recommendations"
-- This is usually a temporary API issue - try again
-- Check that your API key is valid and has available credits
-
-### Colors don't show on preview
-- Make sure you selected some wall area in the mask editor
-- Try using the "Auto-Detect Walls" feature
-
-## Cost Estimates
-
-- **Anthropic API**: ~$0.003 per consultation (using Claude Sonnet)
-- **Vercel**: Free tier should handle thousands of consultations/month
-- **Total**: Nearly free for moderate usage
-
-## Future Enhancements
-
-- [ ] Save/export color palettes
-- [ ] More sophisticated wall detection using AI segmentation
-- [ ] Color palette generator for whole-home consistency
-- [ ] Integration with Sherwin Williams store locator
-- [ ] AR preview using device camera
-
-## License
-
-MIT License - feel free to use and modify for your projects!
+The result is previews that look like actual professional photos, not filtered images.

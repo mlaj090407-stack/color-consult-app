@@ -1,77 +1,49 @@
 // api/generate-colors.js
 module.exports = async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     
     if (!apiKey) {
       return res.status(500).json({ 
-        error: 'ANTHROPIC_API_KEY not found in environment variables. Please add it in Vercel Settings → Environment Variables and redeploy.',
-        debug: {
-          hint: 'Go to Vercel Dashboard → Your Project → Settings → Environment Variables'
-        }
+        error: 'ANTHROPIC_API_KEY not found. Add it in Vercel Environment Variables.'
       });
     }
 
     const { answers } = req.body;
+    if (!answers) return res.status(400).json({ error: 'No answers provided' });
 
-    if (!answers) {
-      return res.status(400).json({ error: 'No answers provided' });
-    }
+    const prompt = `You are an expert interior designer specializing in Sherwin Williams paints. Based on this client info, recommend exactly 3 Sherwin Williams paint colors.
 
-    const prompt = `You are an expert interior designer and color consultant specializing in Sherwin Williams paints. Based on the following client information, recommend exactly 3 Sherwin Williams paint colors.
-
-CLIENT INFORMATION:
-- Surfaces to paint: ${answers.surfaces_to_paint || 'Not specified'}
-- Room type: ${answers.room_type || 'Not specified'}
-- Natural lighting: ${answers.lighting || 'Not specified'}
-- Light bulb type: ${answers.light_bulbs || 'Not specified'}
-- Desired style: ${answers.style || 'Not specified'}
-- Desired mood: ${answers.mood || 'Not specified'}
-- Existing furniture/decor colors: ${answers.existing_colors || 'Not specified'}
-- Colors to avoid: ${answers.avoid_colors || 'None specified'}
+CLIENT INFO:
+- Room: ${answers.room_type || 'Not specified'}
+- Surfaces: ${answers.surfaces_to_paint || 'Walls'}
+- Lighting: ${answers.lighting || 'Moderate'}
+- Light bulbs: ${answers.light_bulbs || 'Not specified'}
+- Style: ${answers.style || 'Not specified'}
+- Mood: ${answers.mood || 'Not specified'}
+- Existing colors: ${answers.existing_colors || 'Not specified'}
+- Avoid: ${answers.avoid_colors || 'None'}
 - Tone preference: ${answers.preference || 'No preference'}
-- Additional notes: ${answers.additional_info || 'None'}
+- Notes: ${answers.additional_info || 'None'}
 
 REQUIREMENTS:
-1. Provide exactly 3 different Sherwin Williams paint colors
-2. Use REAL Sherwin Williams color names with their actual SW codes
-3. Provide accurate hex codes that match the real Sherwin Williams colors
-4. Each recommendation should work well with the client's existing decor
-5. Consider how the color will look under their lighting conditions
-6. Provide diverse options (e.g., one safe choice, one bold choice, one middle ground)
+1. Use REAL Sherwin Williams colors with actual SW codes
+2. Provide accurate hex codes
+3. Give diverse options (safe, bold, middle-ground)
+4. Consider lighting conditions
 
-IMPORTANT: Respond ONLY with a valid JSON array, no additional text or markdown formatting.
-
-Format your response exactly like this:
+Respond with ONLY a JSON array, no other text:
 [
-  {
-    "name": "Color Name (SW XXXX)",
-    "hex": "#XXXXXX",
-    "description": "2-3 sentences explaining why this color works for this space, considering the lighting, style, and existing decor."
-  },
-  {
-    "name": "Color Name (SW XXXX)",
-    "hex": "#XXXXXX",
-    "description": "2-3 sentences explaining why this color works for this space."
-  },
-  {
-    "name": "Color Name (SW XXXX)",
-    "hex": "#XXXXXX",
-    "description": "2-3 sentences explaining why this color works for this space."
-  }
+  {"name": "Color Name (SW XXXX)", "hex": "#XXXXXX", "description": "Why this works (2-3 sentences)"},
+  {"name": "Color Name (SW XXXX)", "hex": "#XXXXXX", "description": "Why this works"},
+  {"name": "Color Name (SW XXXX)", "hex": "#XXXXXX", "description": "Why this works"}
 ]`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -84,86 +56,27 @@ Format your response exactly like this:
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
-        messages: [
-          { role: 'user', content: prompt }
-        ]
+        messages: [{ role: 'user', content: prompt }]
       })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { raw: errorText };
-      }
-      
-      console.error('Anthropic API error:', errorData);
-      
-      return res.status(500).json({ 
-        error: `Anthropic API error: ${errorData.error?.message || 'Unknown error'}`,
-        debug: errorData
-      });
+      const err = await response.json();
+      return res.status(500).json({ error: err.error?.message || 'Anthropic API error' });
     }
 
     const data = await response.json();
+    let text = data.content[0].text.trim();
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     
-    if (!data.content || !data.content[0] || !data.content[0].text) {
-      return res.status(500).json({ 
-        error: 'Invalid response from Anthropic API',
-        debug: data
-      });
-    }
-
-    let responseText = data.content[0].text.trim();
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) text = jsonMatch[0];
     
-    // Clean up response - remove markdown code blocks if present
-    responseText = responseText
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/gi, '')
-      .trim();
-    
-    // Try to extract JSON array if there's extra text
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      responseText = jsonMatch[0];
-    }
-    
-    let colors;
-    try {
-      colors = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Response text:', responseText);
-      return res.status(500).json({ 
-        error: 'Failed to parse color recommendations',
-        debug: { responseText, parseError: parseError.message }
-      });
-    }
-    
-    // Validate the response structure
-    if (!Array.isArray(colors) || colors.length === 0) {
-      return res.status(500).json({ 
-        error: 'Invalid color recommendations format',
-        debug: { colors }
-      });
-    }
-    
-    // Ensure each color has required fields
-    colors = colors.map((color, index) => ({
-      name: color.name || `Color ${index + 1}`,
-      hex: color.hex || '#808080',
-      description: color.description || 'A versatile color choice for your space.'
-    }));
-    
+    const colors = JSON.parse(text);
     return res.status(200).json({ colors });
 
   } catch (error) {
-    console.error('Error in generate-colors:', error);
-    return res.status(500).json({ 
-      error: error.message || 'An unexpected error occurred',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 };

@@ -1,14 +1,12 @@
 {
-  "name": "color-consultant-app",
-  "version": "1.0.0",
-  "description": "AI-powered color consultation tool with Sherwin Williams paint recommendations",
-  "main": "index.html",
+  "name": "ai-color-consultant",
+  "version": "2.0.0",
+  "description": "AI-powered paint color consultation with realistic wall previews",
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod"
   },
   "dependencies": {},
-  "devDependencies": {},
   "engines": {
     "node": "20.x"
   }
